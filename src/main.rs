@@ -1,115 +1,56 @@
-use clap::{Parser, Subcommand};
-use std::collections::HashSet;
+use clap::Parser;
+use sc_cli::{
+    GenerateCmd, GenerateKeyCmdCommon, InspectKeyCmd, InspectNodeKeyCmd, SignCmd, VanityCmd,
+    VerifyCmd,
+};
 
-#[derive(Parser)]
-#[command(author, version, about, long_about = None)]
-struct Cli {
-    #[command(subcommand)]
-    command: Option<Commands>,
+#[derive(Debug, Parser)]
+#[command(
+    name = "sense",
+    author = "Verisense Team <dev@verisense.network>",
+    about = "Utility for generating and restoring with Verisense chain keys",
+    version
+)]
+#[command(before_help = r#"
+ ____                      
+/ ___|  ___ _ __  ___  ___ 
+\___ \ / _ \ '_ \/ __|/ _ \
+ ___) |  __/ | | \__ \  __/
+|____/ \___|_| |_|___/\___|
+"#)]
+pub enum Sense {
+    /// Generate a random node key, write it to a file or stdout and write the
+    /// corresponding peer-id to stderr
+    GenerateNodeKey(GenerateKeyCmdCommon),
+
+    /// Generate a random account
+    Generate(GenerateCmd),
+
+    /// Gets a public key and a SS58 address from the provided Secret URI
+    Inspect(InspectKeyCmd),
+
+    /// Load a node key from a file or stdin and print the corresponding peer-id
+    InspectNodeKey(InspectNodeKeyCmd),
+
+    /// Sign a message, with a given (secret) key.
+    Sign(SignCmd),
+
+    /// Generate a seed that provides a vanity address.
+    Vanity(VanityCmd),
+
+    /// Verify a signature for a message, provided on STDIN, with a given (public or secret) key.
+    Verify(VerifyCmd),
 }
 
-#[derive(Subcommand)]
-enum Commands {
-    /// Generate ASCII art for a word
-    Generate {
-        /// The word to generate ASCII art for
-        word: String,
-    },
-    /// List available letters
-    List,
-}
-
-fn get_letter_ascii(c: char) -> Vec<String> {
-    match c {
-        'A' => vec!["  ___  ", " / _ \\ ", "/ /_\\ \\", "|  _  |", "|_| |_|"],
-        'B' => vec![" ____  ", "|  _ \\ ", "| |_) |", "|  _ < ", "|_|_\\_\\"],
-        'C' => vec!["  ____ ", " / ___|", "| |    ", "| |    ", " \\____|"],
-        'D' => vec![" ____  ", "|  _ \\ ", "| | | |", "| |_| |", "|____/ "],
-        'E' => vec![" _____ ", "| ____|", "|  _|  ", "| |___ ", "|_____|"],
-        'F' => vec![" _____ ", "|  ___|", "| |_   ", "|  _|  ", "|_|    "],
-        'G' => vec!["  ____ ", " / ___|", "| |  _ ", "| |_| |", " \\____|"],
-        'H' => vec![" _   _ ", "| | | |", "| |_| |", "|  _  |", "|_| |_|"],
-        'I' => vec![" _____ ", "|_   _|", "  | |  ", "  | |  ", " _|_|_ "],
-        'J' => vec!["     _ ", "    | |", " _  | |", "| |_| |", " \\___/ "],
-        'K' => vec![" _   __", "| | / /", "| |/ / ", "|    \\ ", "|_|\\_\\"],
-        'L' => vec![" _     ", "| |    ", "| |    ", "| |___ ", "|_____|"],
-        'M' => vec![" __  __", "|  \\/  |", "| |\\/| |", "| |  | |", "|_|  |_|"],
-        'N' => vec![" _   _ ", "| \\ | |", "|  \\| |", "| |\\  |", "|_| \\_|"],
-        'O' => vec!["  ___  ", " / _ \\ ", "| | | |", "| |_| |", " \\___/ "],
-        'P' => vec![" ____  ", "|  _ \\ ", "| |_) |", "|  __/ ", "|_|    "],
-        'Q' => vec!["  ___  ", " / _ \\ ", "| | | |", "| |_| |", " \\__\\_\\"],
-        'R' => vec![" ____  ", "|  _ \\ ", "| |_) |", "|  _ < ", "|_| \\_\\"],
-        'S' => vec![" ____  ", "/ ___| ", "\\___ \\ ", " ___) |", "|____/ "],
-        'T' => vec![" _____ ", "|_   _|", "  | |  ", "  | |  ", "  |_|  "],
-        'U' => vec![" _   _ ", "| | | |", "| | | |", "| |_| |", " \\___/ "],
-        'V' => vec![
-            "__     __",
-            "\\ \\   / /",
-            " \\ \\ / / ",
-            "  \\ V /  ",
-            "   \\_/   ",
-        ],
-        'W' => vec![
-            "__        __",
-            "\\ \\      / /",
-            " \\ \\ /\\ / / ",
-            "  \\ V  V /  ",
-            "   \\_/\\_/   ",
-        ],
-        'X' => vec!["__  __", "\\ \\/ /", " \\  / ", " /  \\ ", "/_/\\_\\"],
-        'Y' => vec!["__   __", "\\ \\ / /", " \\ V / ", "  | |  ", "  |_|  "],
-        'Z' => vec![" _____", "|__  /", "  / / ", " / /_ ", "/____|"],
-        _ => vec![" ", " ", " ", " ", " "],
-    }
-    .iter()
-    .map(|s| s.to_string())
-    .collect()
-}
-
-fn generate_word_ascii(word: &str) -> String {
-    let letters: Vec<Vec<String>> = word.to_uppercase().chars().map(get_letter_ascii).collect();
-    let height = letters[0].len();
-
-    (0..height)
-        .map(|i| {
-            letters
-                .iter()
-                .map(|letter| letter[i].clone())
-                .collect::<Vec<String>>()
-                .join(" ")
-        })
-        .collect::<Vec<String>>()
-        .join("\n")
-}
-
-fn list_available_letters() -> Vec<char> {
-    let mut available = HashSet::new();
-    for c in 'A'..='Z' {
-        if get_letter_ascii(c) != get_letter_ascii(' ') {
-            available.insert(c);
-        }
-    }
-    let mut result: Vec<char> = available.into_iter().collect();
-    result.sort();
-    result
-}
-
-fn main() {
-    let cli = Cli::parse();
-
-    match &cli.command {
-        Some(Commands::Generate { word }) => {
-            println!("Generating ASCII art for: {}", word);
-            println!("{}", generate_word_ascii(word));
-        }
-        Some(Commands::List) => {
-            println!("Available letters:");
-            for c in list_available_letters() {
-                println!("{}", c);
-            }
-        }
-        None => {
-            println!("No command specified. Use --help for usage information.");
-        }
+/// Run the sense command, given the appropriate runtime.
+fn main() -> Result<(), sc_cli::Error> {
+    match Sense::parse() {
+        Sense::GenerateNodeKey(cmd) => cmd.run(),
+        Sense::Generate(cmd) => cmd.run(),
+        Sense::Inspect(cmd) => cmd.run(),
+        Sense::InspectNodeKey(cmd) => cmd.run(),
+        Sense::Vanity(cmd) => cmd.run(),
+        Sense::Verify(cmd) => cmd.run(),
+        Sense::Sign(cmd) => cmd.run(),
     }
 }
