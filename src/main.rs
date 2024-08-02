@@ -40,6 +40,9 @@ pub enum Sense {
 
     /// Verify a signature for a message, provided on STDIN, with a given (public or secret) key.
     Verify(VerifyCmd),
+
+    /// Query the balance of an account
+    Querybalance(QuerybalanceCmd),
 }
 
 /// Run the sense command, given the appropriate runtime.
@@ -52,5 +55,6 @@ fn main() -> Result<(), sc_cli::Error> {
         Sense::Vanity(cmd) => cmd.run(),
         Sense::Verify(cmd) => cmd.run(),
         Sense::Sign(cmd) => cmd.run(),
+        Sense::Querybalance(cmd) => cmd.run(),
     }
 }
