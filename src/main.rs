@@ -4,6 +4,9 @@ use sc_cli::{
     VerifyCmd,
 };
 
+mod deploy_cmd;
+use deploy_cmd::DeployCmd;
+
 #[derive(Debug, Parser)]
 #[command(
     name = "sense",
@@ -42,7 +45,7 @@ pub enum Sense {
     Verify(VerifyCmd),
 
     /// Query the balance of an account
-    Querybalance(QuerybalanceCmd),
+    Deploy(DeployCmd),
 }
 
 /// Run the sense command, given the appropriate runtime.
@@ -55,6 +58,6 @@ fn main() -> Result<(), sc_cli::Error> {
         Sense::Vanity(cmd) => cmd.run(),
         Sense::Verify(cmd) => cmd.run(),
         Sense::Sign(cmd) => cmd.run(),
-        Sense::Querybalance(cmd) => cmd.run(),
+        Sense::Deploy(cmd) => cmd.run(),
     }
 }

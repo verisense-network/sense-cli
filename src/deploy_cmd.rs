@@ -1,0 +1,181 @@
+use clap::Parser;
+// use sha2::{Digest, Sha256};
+use std::fs::File;
+use std::io::Read;
+use std::str::FromStr;
+
+use subxt::{
+    OnlineClient,
+    SubstrateConfig,
+};
+
+use subxt::rpc_params;
+use blake2::{Blake2s256, Digest};
+use subxt::config::substrate::{AccountId32, H256};
+use multiaddr::Multiaddr;
+use libp2p_core::PeerId;
+use subxt::backend::{legacy::LegacyRpcMethods, rpc::RpcClient};
+use subxt::config::DefaultExtrinsicParamsBuilder as Params;
+
+// Generate an interface that we can use from the node's metadata.
+// #[subxt::subxt(runtime_metadata_path = "metadata.scale")]
+#[subxt::subxt(runtime_metadata_insecure_url = "ws://127.0.0.1:9944")]
+pub mod substrate {}
+
+use substrate::runtime_types::sp_core::OpaquePeerId;
+
+
+#[derive(Debug, Clone, Parser)]
+#[command(name = "deploy", about = "Deploy a wasm binary to the Verisense VaaS.")]
+pub struct DeployCmd {
+    #[arg(short = 'n', long, value_name = "name of this app")]
+    name: String,
+
+    #[arg(short = 'v', long, value_name = "version of this WASM file")]
+    version: usize,
+
+    #[arg(short = 'i', long, value_name = "id of this nucleus")]
+    nucleus_id: String,
+
+    #[arg(short = 'w', long, value_name = "WASM file path")]
+    wasm_path: String,
+}
+
+impl DeployCmd {
+    /// Run the command
+    pub fn run(&self) -> sc_cli::Result<()> {
+        // Handle the 'file' argument
+        let mut f = File::open(&self.wasm_path)?;
+        let mut file_content = Vec::new();
+        match f.read_to_end(&mut file_content) {
+            Ok(_) => {
+                // Create a tokio runtime to run the async code
+                let runtime = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
+
+                // Run the async function in the runtime
+                runtime.block_on(async {
+                    if let Err(e) = send_to_substrate(self.nucleus_id.clone(), &file_content, self.name.clone(), self.version as u32).await {
+                        // eprintln!("Error sending to substrate: {}", e);
+                        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                        eprintln!("Deploy success!");
+                    }
+                });
+                // send_to_substrate(self.name.clone(), self.version as u32, &file_content).await?;
+            }
+
+            Err(e) => eprintln!("Error reading file: {}", e),
+        }
+
+        Ok(())
+    }
+}
+
+// fn calculate_digest(binary_data: &[u8]) -> String {
+//     let mut hasher = Sha256::new();
+//     hasher.update(binary_data);
+//     let result = hasher.finalize();
+//     hex::encode(result)
+// }
+
+
+
+fn calculate_blake2b_digest(binary_data: &[u8]) -> String {
+    let mut hasher = Blake2s256::new();
+    hasher.update(binary_data);
+    let result = hasher.finalize();
+    hex::encode(result)
+}
+
+
+
+async fn send_to_substrate(nucleus_id: String, file_content: &[u8], _name: String, _version: u32) -> Result<(), Box<dyn std::error::Error>> {
+    // Calculate digest
+    let digest_string = calculate_blake2b_digest(&file_content);
+    // Convert digest String to H256
+    let digest = H256::from_slice(&hex::decode(digest_string)?);
+
+    let rpc_client = RpcClient::from_url("ws://127.0.0.1:9944").await?;
+    // Use this to construct our RPC methods:
+    let rpc = LegacyRpcMethods::<SubstrateConfig>::new(rpc_client.clone());
+    // Create a new client
+    // let api = OnlineClient::<SubstrateConfig>::new().await?;
+    let api = OnlineClient::<SubstrateConfig>::from_rpc_client(rpc_client.clone()).await?;
+
+
+    // Create a signer (you'll need to replace this with actual key management)
+    let signer = subxt_signer::sr25519::dev::alice();
+
+    // Get the peer ID via RPC
+    let peer_id_string: String = rpc_client.request(
+        "system_localPeerId",
+        rpc_params![],
+    ).await?;
+    println!("Local peer ID string: {}", peer_id_string);
+
+    // Parse the peer ID string into a Multiaddr
+    let multiaddr: Multiaddr = peer_id_string.parse()?;
+    println!("multiaddr: {}", multiaddr);
+
+    // Extract the PeerId from the Multiaddr
+    let peer_id = multiaddr
+        .iter()
+        .find_map(|proto| {
+            if let multiaddr::Protocol::P2p(hash) = proto {
+                Some(PeerId::from_multihash(hash).expect("Valid multihash"))
+            } else {
+                None
+            }
+        })
+        .ok_or("PeerId not found in Multiaddr")?;
+
+    // Convert PeerId to OpaquePeerId
+    let opaque_peer_id = OpaquePeerId(peer_id.to_bytes());
+
+    // Convert nucleus_id String to AccountId32
+    let nucleus_account_id = AccountId32::from_str(&nucleus_id)
+        .map_err(|_| "Invalid nucleus_id format")?;
+
+    let current_nonce = rpc
+        .system_account_next_index(&signer.public_key().into())
+        .await?;
+    let current_header = rpc.chain_get_header(None).await?.unwrap();
+
+    let ext_params = Params::new()
+        .mortal(&current_header, 8)
+        .nonce(current_nonce)
+        .build();
+
+
+    // Prepare the transaction
+    let tx = substrate::tx()
+        .nucleus() // Replace with your actual pallet name
+        .upload_nucleus_wasm( // Replace with your actual call name
+            nucleus_account_id,
+            opaque_peer_id,
+            digest,
+        );
+
+    // sign the transaction
+    let signed_tx = api.tx()
+        .create_signed(
+            &tx,
+            &signer,
+            ext_params,
+        ).await?;
+
+    let tx_bytes = signed_tx.into_encoded();
+
+    // Call the nucleus_deploy RPC
+    let deploy_result: String = rpc_client.request(
+        "nucleus_deploy",
+        rpc_params![tx_bytes, file_content],
+    ).await?;
+
+    // Parse the result
+    // let result: String = deploy_result.into_json()?;
+
+    // Print the result
+    println!("Transaction submitted: {:?}", deploy_result);
+
+    Ok(())
+}

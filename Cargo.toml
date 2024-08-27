@@ -9,4 +9,12 @@ sc-cli = { package = "sc-cli", git = "https://github.com/paritytech/polkadot-sdk
 
 subxt = "0.37.0"
 subxt-signer = "0.37.0"
+
 tokio = { version = "1.39.3", features = ["full"] }
+
+sha2 = "0.10.6"
+hex = "0.4.3"
+blake2 = "0.10.6"
+
+multiaddr = "0.17.0"
+libp2p-core = "0.39.0"
