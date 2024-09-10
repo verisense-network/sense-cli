@@ -49,7 +49,7 @@ impl DeployCmd {
 
                 // Run the async function in the runtime
                 runtime.block_on(async {
-                    if let Err(_e) = send_to_substrate(
+                    if let Err(e) = send_to_substrate(
                         self.nucleus_id.clone(),
                         &file_content,
                         self.name.clone(),
@@ -57,12 +57,11 @@ impl DeployCmd {
                     )
                     .await
                     {
-                        // eprintln!("Error sending to substrate: {}", e);
-                        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                        eprintln!("Deploy success!");
+                        eprintln!("Error sending to substrate: {}", e);
+                        // tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                        // eprintln!("Deploy success!");
                     }
                 });
-                // send_to_substrate(self.name.clone(), self.version as u32, &file_content).await?;
             }
 
             Err(e) => eprintln!("Error reading file: {}", e),
@@ -117,15 +116,19 @@ async fn send_to_substrate(
     use crate::deploy_cmd::substrate::runtime_types::sp_core::OpaquePeerId;
     // let node_id = sp_core::OpaquePeerId(peer_id_str.as_bytes().to_vec());
     let node_id = OpaquePeerId(peer_id_str.as_bytes().to_vec());
+    println!("NodeId: {:?}", node_id);
 
     // Convert nucleus_id String to AccountId32
     let nucleus_account_id =
         AccountId32::from_str(&nucleus_id).map_err(|_| "Invalid nucleus_id format")?;
+    println!("nucleus_account_id: {:?}", nucleus_account_id);
 
     let current_nonce = rpc
         .system_account_next_index(&signer.public_key().into())
         .await?;
     let current_header = rpc.chain_get_header(None).await?.unwrap();
+    println!("curent_nonce: {:?}", current_nonce);
+    println!("curent_header: {:?}", current_header);
 
     let ext_params = Params::new()
         .mortal(&current_header, 8)
@@ -144,8 +147,10 @@ async fn send_to_substrate(
 
     // sign the transaction
     let signed_tx = api.tx().create_signed(&tx, &signer, ext_params).await?;
+    println!("--> signed_tx.");
 
     let tx_bytes = signed_tx.into_encoded();
+    println!("--> signed_tx tx_bytes. {:?}", tx_bytes);
 
     // Call the nucleus_deploy RPC
     let deploy_result: String = rpc_client
