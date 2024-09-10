@@ -5,7 +5,12 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.4", features = ["derive"] }
-sc-cli = { package = "sc-cli", git = "https://github.com/paritytech/polkadot-sdk", default-features = true }
+# sc-cli = { package = "sc-cli", git = "https://github.com/paritytech/polkadot-sdk", default-features = true }
+sc-cli = { version = "0.46.0", default-features = true }
+#sp-core = { features = ["serde"], version = "28.0.0", default-features = false }
+# sp-core = { features = ["serde"], version = "34.0.0", default-features = false }
+# sp-core = { package = "sp-core", git = "https://github.com/paritytech/polkadot-sdk", features = ["serde"], default-features = false }
+# vrs-primitives = {package = "vrs-primitives", path = "../verisense/primitives/"}
 
 subxt = "0.37.0"
 subxt-signer = "0.37.0"
@@ -16,5 +21,5 @@ sha2 = "0.10.6"
 hex = "0.4.3"
 blake2 = "0.10.6"
 
-multiaddr = "0.17.0"
-libp2p-core = "0.39.0"
+
+
