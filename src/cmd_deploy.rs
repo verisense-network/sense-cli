@@ -122,7 +122,7 @@ async fn send_to_substrate(
     // use crate::deploy_cmd::substrate::runtime_types::sp_core::H256;
     // use crate::deploy_cmd::substrate::runtime_types::sp_runtime::AccountId32;
     // Convert PeerId to OpaquePeerId
-    use crate::deploy_cmd::substrate::runtime_types::sp_core::OpaquePeerId;
+    use crate::cmd_deploy::substrate::runtime_types::sp_core::OpaquePeerId;
     // let node_id = sp_core::OpaquePeerId(peer_id_str.as_bytes().to_vec());
     let node_id = OpaquePeerId(peer_id);
     // println!("NodeId: {:?}", node_id);
