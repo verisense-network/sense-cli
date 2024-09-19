@@ -63,10 +63,22 @@ async fn send_to_substrate(
             capacity,
         );
 
-    let hash = api.tx().sign_and_submit_default(&tx, &signer).await?;
-
-    // Print the result
-    println!("Transaction submitted: {:?}", hash);
+    let result = api
+        .tx()
+        .sign_and_submit_then_watch_default(&tx, &signer)
+        .await?;
+    let events = result.wait_for_finalized_success().await?;
+    // println!("Transaction finalized: events {:?}", events);
+    for ev in events.iter() {
+        if let Ok(ev) = ev {
+            if let Some(ev) = ev.as_event::<substrate::nucleus::events::NucleusCreated>()? {
+                println!("Nucleus created.");
+                println!("  id: {}", ev.id);
+                println!("  name: {}", std::str::from_utf8(&ev.name).unwrap());
+                println!("  capacity: {}", ev.capacity);
+            }
+        }
+    }
 
     Ok(())
 }
