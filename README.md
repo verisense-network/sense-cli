@@ -1,2 +1,2 @@
-# sense-cli
-A command line tool for Verisense VaaS chain.
+# vrs-cli
+A command line tool for Verisense blockchain & AVS.

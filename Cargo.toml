@@ -1,7 +1,13 @@
 [package]
-name = "sense-cli"
+name = "vrs-cli"
 version = "0.1.0"
 edition = "2021"
+license = "GPL-3.0"
+author = ["mike@verisense.network"]
+
+[[bin]]
+name = "vrx"
+path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.4", features = ["derive"] }

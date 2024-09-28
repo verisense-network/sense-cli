@@ -11,7 +11,7 @@ use cmd_create_nucleus::CreateNucleusCmd;
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "sense",
+    name = "vrx",
     author = "Verisense Team <dev@verisense.network>",
     about = "Utility for generating and restoring with Verisense chain keys",
     version
